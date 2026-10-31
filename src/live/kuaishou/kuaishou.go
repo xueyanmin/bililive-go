@@ -2,14 +2,15 @@ package kuaishou
 
 import (
 	"fmt"
-	"github.com/hr3lxphr6j/requests"
-	"github.com/tidwall/gjson"
 	"net/http"
 	"net/url"
 
-	"github.com/hr3lxphr6j/bililive-go/src/live"
-	"github.com/hr3lxphr6j/bililive-go/src/live/internal"
-	"github.com/hr3lxphr6j/bililive-go/src/pkg/utils"
+	"github.com/hr3lxphr6j/requests"
+	"github.com/tidwall/gjson"
+
+	"github.com/bililive-go/bililive-go/src/live"
+	"github.com/bililive-go/bililive-go/src/live/internal"
+	"github.com/bililive-go/bililive-go/src/pkg/utils"
 )
 
 const (
@@ -25,9 +26,9 @@ func init() {
 
 type builder struct{}
 
-func (b *builder) Build(url *url.URL, opt ...live.Option) (live.Live, error) {
+func (b *builder) Build(url *url.URL) (live.Live, error) {
 	return &Live{
-		BaseLive: internal.NewBaseLive(url, opt...),
+		BaseLive: internal.NewBaseLive(url),
 	}, nil
 }
 
@@ -36,15 +37,16 @@ type Live struct {
 }
 
 func (l *Live) getData() (*gjson.Result, error) {
-	cookies := l.Options.Cookies.Cookies(l.Url)
+	cookies := l.GetOptions().Cookies.Cookies(l.Url)
 	cookieKVs := make(map[string]string)
 	for _, item := range cookies {
 		cookieKVs[item.Name] = item.Value
 	}
-	resp, err := requests.Get(l.Url.String(), live.CommonUserAgent, requests.Cookies(cookieKVs))
+	resp, err := l.RequestSession.Get(l.Url.String(), live.CommonUserAgent, requests.Cookies(cookieKVs))
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	switch code := resp.StatusCode; code {
 	case http.StatusOK:
 	case http.StatusNotFound:
@@ -95,9 +97,9 @@ func (l *Live) GetStreamUrls() (us []*url.URL, err error) {
 
 	// 由于更高清晰度需要cookie，暂时无法传，先注释
 	//maxQuality := len(data.Get("liveroom.liveStream.playUrls.0.adaptationSet.representation").Array()) - 1
-	//if l.Options.Quality != 0 && maxQuality >= l.Options.Quality {
-	//	addr = "liveroom.liveStream.playUrls.0.adaptationSet.representation." + strconv.Itoa(l.Options.Quality) + ".url"
-	//} else if l.Options.Quality != 0 {
+	//if l.GetOptions().Quality != 0 && maxQuality >= l.GetOptions().Quality {
+	//	addr = "liveroom.liveStream.playUrls.0.adaptationSet.representation." + strconv.Itoa(l.GetOptions().Quality) + ".url"
+	//} else if l.GetOptions().Quality != 0 {
 	//	addr = "liveroom.liveStream.playUrls.0.adaptationSet.representation." + strconv.Itoa(maxQuality) + ".url"
 	//} else {
 	//	addr = "liveroom.liveStream.playUrls.0.adaptationSet.representation.0.url"
